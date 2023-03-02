@@ -8,6 +8,7 @@ use std::process::Command;
 use tempfile::NamedTempFile;
 use chrono::{TimeZone, Local, NaiveDateTime};
 use percent_encoding;
+use clipboard::{ClipboardContext, ClipboardProvider};
 
 fn main() {
     let matches = App::new("toolx")
@@ -146,6 +147,9 @@ fn main() {
             let re = Regex::new(&from).unwrap();
             let result = re.replace_all(&contents, replace).to_string();
 
+            // 替换掉 |
+            let result = result.replace("|", "");
+
             // 如果result最后内容是replace，则去除
             let result = if result.ends_with(&replace) {
                 result[0..result.len() - replace.len()].to_string()
@@ -163,7 +167,12 @@ fn main() {
             } else {
                 result
             };
+
+            // 写入剪切板
+            write_clipboard(result.as_str());
+            println!("\n*************************output*********************************\n");
             println!("{}", result);
+            println!("\n*************************output*********************************\n");
         }
         
         Some(("j2f", sub_matches)) => {
@@ -189,7 +198,10 @@ fn main() {
             let colored_json = re.replace_all(&formatted_json, |caps: &regex::Captures<'_>| {
                 Colour::Green.paint(caps[0].to_string()).to_string()
             });
+
+            println!("\n*************************output*********************************\n");
             println!("{}", colored_json);
+            println!("\n*************************output*********************************\n");
         }
 
         Some(("u2t", sub_matches)) => {
@@ -202,7 +214,10 @@ fn main() {
                 }
             };
             let dt = Local.timestamp(unix_secs, 0);
+
+            println!("\n*************************output*********************************\n");
             println!("{}", dt.format("%Y-%m-%d %H:%M:%S"));
+            println!("\n*************************output*********************************\n");
         }
 
         Some(("t2u", sub_matches)) => {
@@ -215,19 +230,28 @@ fn main() {
                 }
             };
             let unix_secs = Local.from_local_datetime(&dt).unwrap().timestamp();
+
+            println!("\n*************************output*********************************\n");
             println!("{}", unix_secs);
+            println!("\n*************************output*********************************\n");
         }
 
         Some(("u2e", sub_matches)) => {
             let text = sub_matches.value_of("text").unwrap_or("");
             let encoded = percent_encoding::utf8_percent_encode(text, percent_encoding::NON_ALPHANUMERIC);
+
+            println!("\n*************************output*********************************\n");
             println!("{}", encoded);
+            println!("\n*************************output*********************************\n");
         }
 
         Some(("e2u", sub_matches)) => {
             let text = sub_matches.value_of("text").unwrap_or("");
             let decoded = percent_encoding::percent_decode_str(text).decode_utf8_lossy();
+
+            println!("\n*************************output*********************************\n");
             println!("{}", decoded);
+            println!("\n*************************output*********************************\n");
         }
         _ => {}
     }
@@ -250,4 +274,9 @@ fn edit_text(initial_text: &str) -> String {
         .expect("open vim failed");
     // 读取数据
     std::fs::read_to_string(file_path).expect("read data from template file failed")
+}
+
+fn write_clipboard(text: &str) {
+    let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+    ctx.set_contents(text.to_owned()).unwrap();
 }
